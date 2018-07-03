@@ -2,6 +2,7 @@
 import random
 import math
 import json
+from collections import OrderedDict
 
 neurons = {}
 REG_TERM = 0.00001
@@ -118,3 +119,17 @@ def regularity(network, dataset):
 def fitness(network, dataset):
     return error(network, dataset) + regularity(network, dataset)
 
+
+def save_network_to_file(network, file):
+    res = []
+    for k in network.keys():
+        res.append((k, network[k]))
+    with open(file, 'w') as f:
+        json.dump(res, f, indent=2)
+    return True
+
+
+def load_network_from_file(file):
+    with open(file, 'r') as f:
+        data = json.load(f)
+        return OrderedDict(data)
