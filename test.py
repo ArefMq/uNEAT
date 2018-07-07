@@ -1,61 +1,47 @@
 #!/usr/bin/python
-from collections import OrderedDict
-
-from neural_network import *
 from dataset import dataset
+from neural_network import Network
+from util import print_initial_message
 
 
 def test_sample(network, sample):
-    print('[%d %d] : %r' % (sample[0], sample[1], binary_classify(network, sample)))
+    print('[%d %d] : %r' % (sample[0], sample[1], network.binary_classify(sample)))
 
 
 def main():
-    truth_network = OrderedDict([
-        ('x1', make_neuron()),
-        ('x2', make_neuron()),
+    net = Network(2, 1)
+    net.add_neuron(connections=['in0', 'in1'], weights=[+20, +20], bias=-30, activation='sigmoid')
+    net.add_neuron(connections=['in0', 'in1'], weights=[-20, -20], bias=+10, activation='sigmoid')
+    net.neurons['out0'].connections = ['h0', 'h1']
+    net.neurons['out0'].weights = [+20, +20]
+    net.neurons['out0'].neuron_type = 'feed_forward_neuron'
+    net.neurons['out0'].bias = -10
+    net.neurons['out0'].activation = 'sigmoid'
+    net.save_network_to_file('truth.network.json')
 
-        ('a1', make_neuron(['x1', 'x2'], [+20, +20], -30, activation='sigmoid')),
-        ('a2', make_neuron(['x1', 'x2'], [-20, -20], +10, activation='sigmoid')),
-
-        ('o', make_neuron(['a1', 'a2'], [+20, +20], -10, activation='sigmoid')),
-
-    ])
-
-    arbitrary_network = OrderedDict([
-        ('x1', make_neuron()),
-        ('x2', make_neuron()),
-
-        ('a1', make_neuron(['x1', 'x2'], activation='sigmoid')),
-        ('a2', make_neuron(['x1', 'x2'], activation='sigmoid')),
-
-        ('o', make_neuron(['a1', 'a2'], activation='sigmoid')),
-    ])
-
-    trained_network = load_network_from_file('result.network.json')
-
-    print('%0.4f' % fitness(truth_network, dataset))
-    test_sample(truth_network, [0, 0])
-    test_sample(truth_network, [0, 1])
-    test_sample(truth_network, [1, 0])
-    test_sample(truth_network, [1, 1])
+    print('Truth network (#%s):' % net.name)
+    print('%0.4f' % net.fitness(dataset))
+    test_sample(net, [0, 0])
+    test_sample(net, [0, 1])
+    test_sample(net, [1, 0])
+    test_sample(net, [1, 1])
     print '------------------------------------'
 
-    print('%0.4f' % fitness(arbitrary_network, dataset))
-    test_sample(arbitrary_network, [0, 0])
-    test_sample(arbitrary_network, [0, 1])
-    test_sample(arbitrary_network, [1, 0])
-    test_sample(arbitrary_network, [1, 1])
+    try:
+        net = Network()
+        net.load_network_from_file('result.network.json')
 
-    print '------------------------------------'
-    print('%0.4f' % fitness(trained_network, dataset))
-    test_sample(trained_network, [0, 0])
-    test_sample(trained_network, [0, 1])
-    test_sample(trained_network, [1, 0])
-    test_sample(trained_network, [1, 1])
+        print('result network (#%s):' % net.name)
+        print('%0.4f' % net.fitness(dataset))
+        test_sample(net, [0, 0])
+        test_sample(net, [0, 1])
+        test_sample(net, [1, 0])
+        test_sample(net, [1, 1])
+        print '------------------------------------'
+    except IOError:
+        pass
 
 
 if __name__ == "__main__":
-    print('running uNEAT-T1 (Test)')
-    print('micro-(Neuro-Evolution of Augmenting Topology) Framework -- Version T1')
-    print('Licenced under MIT')
+    print_initial_message('test', verbose_level=1)
     main()

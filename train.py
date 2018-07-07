@@ -1,6 +1,7 @@
 from genetics import Genetics
 from neural_network import binary_classify, error, regularity, fitness, save_network_to_file
 from dataset import dataset
+from util import print_initial_message
 
 
 def test_sample(network, sample):
@@ -8,10 +9,7 @@ def test_sample(network, sample):
 
 
 if __name__ == '__main__':
-    print('running uNEAT-T1 (Test)')
-    print('micro-(Neuro-Evolution of Augmenting Topology) Framework -- Version T1')
-    print('Licenced under MIT')
-
+    print_initial_message('train', verbose_level=1)
     best = None
     try:
         gn = Genetics(initial_population=300, max_population=9000)

@@ -1,0 +1,53 @@
+{
+  "out0": {
+    "connections": [
+      "h0", 
+      "h1"
+    ], 
+    "activation": "sigmoid", 
+    "bias": -10, 
+    "weights": [
+      20, 
+      20
+    ]
+  }, 
+  "__num_of_outputs": 1, 
+  "h0": {
+    "connections": [
+      "in0", 
+      "in1"
+    ], 
+    "activation": "sigmoid", 
+    "bias": -30, 
+    "weights": [
+      20, 
+      20
+    ]
+  }, 
+  "h1": {
+    "connections": [
+      "in0", 
+      "in1"
+    ], 
+    "activation": "sigmoid", 
+    "bias": 10, 
+    "weights": [
+      -20, 
+      -20
+    ]
+  }, 
+  "in0": {
+    "connections": null, 
+    "activation": "linear", 
+    "bias": 7.514678280894161e-05, 
+    "weights": null
+  }, 
+  "in1": {
+    "connections": null, 
+    "activation": "linear", 
+    "bias": 7.358572962196561e-05, 
+    "weights": null
+  }, 
+  "__name": "e01", 
+  "__neuron_counter": 2
+}

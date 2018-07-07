@@ -1,135 +1,97 @@
 #!/usr/bin/python
-import random
-import math
 import json
-from collections import OrderedDict
+import math
 
-neurons = {}
-REG_TERM = 0.00001
-
-CONNECTIONS = 'connections'
-WEIGHTS = 'weights'
-BIAS = 'bias'
-ACTIVATION = 'activation_function'
-VALUE = 'value'
+from constants import *
+from neuron import Neuron
+from util import generate_random_name
 
 
-def rand_epsilon():
-    return random.random() * 0.0001
+class Network:
+    def __init__(self, num_of_inputs=None, num_of_outputs=None, name=None):
+        self.neuron_counter = 0
+        self.num_of_outputs = num_of_outputs
+        self.neurons = {}
+        self.name = name if name is not None else generate_random_name()
 
+        if num_of_outputs is None or num_of_inputs is None:
+            return
 
-def make_neuron(connections=None, weights=None, bias=None, activation='linear', value=0):
-    if bias is None:
-        bias = rand_epsilon()
+        for i in range(num_of_inputs):
+            self.neurons['in%d' % i] = Neuron(name='in%d' % i)
+        for i in range(num_of_outputs):
+            self.neurons['out%d' % i] = Neuron(name='out%d' % i)
 
-    if connections is not None and weights is None:
-        weights = [rand_epsilon() for _ in range(len(connections))]
+    def add_neuron(self, **kwargs):
+        kwargs['name'] = 'h%d' % self.neuron_counter
+        self.neurons['h%d' % self.neuron_counter] = Neuron(**kwargs)
+        self.neuron_counter += 1
 
-    return {
-        CONNECTIONS: connections,
-        WEIGHTS: weights,
-        BIAS: bias,
-        ACTIVATION: activation,
-        VALUE: value
-    }
+    def binary_classify(self, input_values):
+        res = self.predict(input_values)[0]
+        return res > 0.5
 
+    def predict(self, values):
+        for n in self.neurons:
+            self.neurons[n].reset()
 
-def activate(value, func):
-    if func == 'linear':
-        return value
-    if func == 'sigmoid':
-        return 1 / (1 + math.e ** (-value))
+        for i, v in enumerate(values):
+            if v is None:
+                continue
+            self.neurons['in%d' % i].set_value(v)
 
+        res = []
+        for i in range(self.num_of_outputs):
+            val = self.neurons['out%d' % i].get_value(self.neurons)
+            res.append(val)
+        return res
 
-def binary_classify(network, values):
-    res = predict(network, values)
-    return res > 0.5
+    def error(self, dataset):
+        total_error = 0
+        for data in dataset:
+            x = data['inputs']
+            y = data['outputs']
+            h = self.predict(x)
 
+            sample_error = 0
+            for i in range(len(y)):
+                if y[i] == 0:
+                    if h[i] == 1:
+                        h[i] = 0.5
+                    sample_error += math.log(1.0 - h[i])
+                elif y[i] == 1:
+                    if h[i] == 0:
+                        h[i] = 0.5
+                    sample_error += math.log(h[i])
+                else:
+                    if h[i] == 0 or h[i] == 1:
+                        h[i] = 0.5
+                    sample_error += y[i] * math.log(h[i]) + (1.0 - y[i]) * math.log(1.0 - h[i])
+            total_error += sample_error
+        return total_error / -len(dataset)
 
-def predict(network, values):
-    network['x1'][VALUE] = values[0]
-    network['x2'][VALUE] = values[1]
+    def regularity(self, dataset):
+        reg = 0
+        for l in self.neurons:
+            if self.neurons[l].weights is not None:
+                reg += sum([i * i for i in self.neurons[l].weights])
+        return REG_TERM * reg / (2 * len(dataset))
 
-    # print '~~~~~~~~~~~~~~~~~~~~~~~~~~~~'
-    # print json.dumps(network, indent=2)
-    # print '~~~~~~~~~~~~~~~~~~~~~~~~~~~~'
-    update_network(network)
+    def fitness(self, dataset):
+        return self.error(dataset) + self.regularity(dataset)
 
-    return network['o'][VALUE]
+    def save_network_to_file(self, filename):
+        res = {key: value.serialize() for key, value in self.neurons.items()}
+        res['__neuron_counter'] = self.neuron_counter
+        res['__num_of_outputs'] = self.num_of_outputs
+        res['__name'] = self.name
+        with open(filename, 'w') as f:
+            json.dump(res, f, indent=2)
 
-
-def update_network(network):
-    for n in network:
-        connections = network[n][CONNECTIONS]
-        weights = network[n][WEIGHTS]
-
-        if connections is None:
-            continue
-
-        if len(connections) != len(weights):
-            raise Exception('coefficients mis-match...')
-
-        result = network[n][BIAS]
-        for i in range(len(connections)):
-            # print('  %s (%0.2f) * %f' % (connections[i], network[connections[i]]['value'], weights[i]))
-            result += network[connections[i]][VALUE] * weights[i]
-        network[n]['value'] = activate(result, network[n][ACTIVATION])
-        # print('%s - %0.2f' % (n, network[n]['value']))
-
-
-def error(network, dataset):
-    total_error = 0
-    for data in dataset:
-        inputs = data['inputs']
-        outputs = data['outputs']
-
-        for i in inputs:
-            network[i][VALUE] = inputs[i]
-
-        update_network(network)
-
-        sample_error = 0
-        for o in outputs:
-            y = outputs[o]
-            h = network[o][VALUE]
-            if y == 0:
-                if h == 1:
-                    h = 0.5
-                sample_error += math.log(1.0-h)
-            elif y == 1:
-                if h == 0:
-                    h = 0.5
-                sample_error += math.log(h)
-            else:
-                if h == 0 or h == 1:
-                    h = 0.5
-                sample_error += y * math.log(h) + (1.0-y) * math.log(1.0-h)
-        total_error += sample_error
-    return total_error / -len(dataset)
-
-
-def regularity(network, dataset):
-    reg = 0
-    for l in network:
-        if network[l][WEIGHTS] is not None:
-            reg += sum([i*i for i in network[l][WEIGHTS]])
-    return REG_TERM * reg / (2 * len(dataset))
-
-
-def fitness(network, dataset):
-    return error(network, dataset) + regularity(network, dataset)
-
-
-def save_network_to_file(network, file):
-    res = []
-    for k in network.keys():
-        res.append((k, network[k]))
-    with open(file, 'w') as f:
-        json.dump(res, f, indent=2)
-    return True
-
-
-def load_network_from_file(file):
-    with open(file, 'r') as f:
-        data = json.load(f)
-        return OrderedDict(data)
+    def load_network_from_file(self, filename):
+        with open(filename, 'r') as f:
+            data = json.load(f)
+            self.neurons = {key: Neuron.deserialize(value) for key, value in data.items() if not key.startswith('__')}
+            self.neuron_counter = data['__neuron_counter']
+            self.num_of_outputs = data['__num_of_outputs']
+            self.name = data['__name']
