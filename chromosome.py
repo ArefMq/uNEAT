@@ -1,7 +1,7 @@
 import random
 from collections import OrderedDict
 
-from neural_network import *
+from neural_network import Network
 from dataset import dataset
 
 
@@ -18,46 +18,48 @@ class Chromosome:
         return random.random() * 2.0 * scale - scale
 
     def _random_genes(self):
-        return OrderedDict([
-            ('x1', make_neuron()),
-            ('x2', make_neuron()),
+        net = Network(2, 1)
+        net.add_neuron(connections=['in0', 'in1'], weights=[self._random_weight(), self._random_weight()], bias=self._random_weight(), activation='sigmoid')
+        net.add_neuron(connections=['in0', 'in1'], weights=[self._random_weight(), self._random_weight()], bias=self._random_weight(), activation='sigmoid')
+        net.neurons['out0'].connections = ['h0', 'h1']
+        net.neurons['out0'].weights = [self._random_weight(), self._random_weight()]
+        net.neurons['out0'].neuron_type = 'feed_forward_neuron'
+        net.neurons['out0'].bias = self._random_weight()
+        net.neurons['out0'].activation = 'sigmoid'
 
-            ('a1', make_neuron(['x1', 'x2'], [self._random_weight(), self._random_weight()], self._random_weight(), activation='sigmoid')),
-            ('a2', make_neuron(['x1', 'x2'], [self._random_weight(), self._random_weight()], self._random_weight(), activation='sigmoid')),
-
-            ('o', make_neuron(['a1', 'a2'], [self._random_weight(), self._random_weight()], self._random_weight(), activation='sigmoid')),
-        ])
+        return net
 
     def update_fitness(self):
-        self.Regularization = regularity(self.Genes, dataset)
-        self.Error = error(self.Genes, dataset)
+        self.Regularization = self.Genes.regularity(dataset)
+        self.Error = self.Genes.error(dataset)
         self.Fitness = self.Error + self.Regularization
 
     @staticmethod
     def cross_over(a, b):
         def __extract_weights(gene):
             return [
-                gene['a1'][WEIGHTS][0],
-                gene['a1'][WEIGHTS][1],
-                gene['a1'][BIAS],
-                gene['a2'][WEIGHTS][0],
-                gene['a2'][WEIGHTS][1],
-                gene['a2'][BIAS],
-                gene['o'][WEIGHTS][0],
-                gene['o'][WEIGHTS][1],
-                gene['o'][BIAS],
+                gene.neurons['h0'].weights[0],
+                gene.neurons['h0'].weights[1],
+                gene.neurons['h0'].bias,
+                gene.neurons['h1'].weights[0],
+                gene.neurons['h1'].weights[1],
+                gene.neurons['h1'].bias,
+                gene.neurons['out0'].weights[0],
+                gene.neurons['out0'].weights[1],
+                gene.neurons['out0'].bias
             ]
 
         def __set_weights(gene, weights):
-            gene['a1'][WEIGHTS][0] = weights[0]
-            gene['a1'][WEIGHTS][1] = weights[1]
-            gene['a1'][BIAS] = weights[2]
-            gene['a2'][WEIGHTS][0] = weights[3]
-            gene['a2'][WEIGHTS][1] = weights[4]
-            gene['a2'][BIAS] = weights[5]
-            gene['o'][WEIGHTS][0] = weights[6]
-            gene['o'][WEIGHTS][1] = weights[7]
-            gene['o'][BIAS] = weights[8]
+            gene.neurons['h0'].weights[0] = weights[0]
+            gene.neurons['h0'].weights[1] = weights[1]
+            gene.neurons['h0'].bias = weights[2]
+            gene.neurons['h1'].weights[0] = weights[3]
+            gene.neurons['h1'].weights[1] = weights[4]
+            gene.neurons['h1'].bias = weights[5]
+            gene.neurons['out0'].weights[0] = weights[6]
+            gene.neurons['out0'].weights[1] = weights[7]
+            gene.neurons['out0'].bias = weights[8]
+
             return gene
 
         former_w = dict()
@@ -76,11 +78,11 @@ class Chromosome:
     def mutate(self, allow_only_growing=False):
         def __mutate_weight(layer_index, weight_index):
             if weight_index == -1:
-                self.Genes[layer_index][BIAS] = self._random_weight()
+                self.Genes.neurons[layer_index].bias = self._random_weight()
             else:
-                self.Genes[layer_index][WEIGHTS][weight_index] = self._random_weight()
+                self.Genes.neurons[layer_index].weights[weight_index] = self._random_weight()
 
-        index = random.sample(['a1', 'a2', 'o'], 1)[0]
+        index = random.sample(['h0', 'h1', 'out0'], 1)[0]
         w_index = random.sample([-1, 0, 1], 1)[0]
         __mutate_weight(index, w_index)
 
@@ -88,19 +90,19 @@ class Chromosome:
         if self.Genes is None:
             return 'None'
 
-        print self.Genes
+        print self.Genes.neurons
 
         res = ''
-        for g in self.Genes:
-            gene = self.Genes[g]
+        for g in self.Genes.neurons:
+            gene = self.Genes.neurons[g]
             res += '%s)\t%s(%0.2f)\t%s(%0.2f)\tbias(%0.2f)\t%s\n' % (
                 g,
-                '* ' if gene[CONNECTIONS] is None else gene[CONNECTIONS][0],
-                0 if gene[WEIGHTS] is None else gene[WEIGHTS][0],
-                '* ' if gene[CONNECTIONS] is None else gene[CONNECTIONS][1],
-                0 if gene[WEIGHTS] is None else gene[WEIGHTS][1],
-                0 if gene[BIAS] is None else gene[BIAS],
-                '*' if gene[ACTIVATION] is None else gene[ACTIVATION]
+                '* ' if gene.connections is None else gene.connections[0],
+                0 if gene.weights is None else gene.weights[0],
+                '* ' if gene.connections is None else gene.connections[1],
+                0 if gene.weights is None else gene.weights[1],
+                0 if gene.bias is None else gene.bias,
+                '*' if gene.activation is None else gene.activation
             )
         res += '\n'
         res += 'Fitness:    %0.3f\n' % self.Fitness

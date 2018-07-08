@@ -3,7 +3,6 @@ import math
 from time import sleep
 
 from copy import deepcopy
-
 from chromosome import Chromosome
 
 
